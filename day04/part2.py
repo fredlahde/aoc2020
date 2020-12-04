@@ -34,7 +34,7 @@ class Passport():
                 return False
 
 
-        failed_message = lambda f: print("failed in field %s" % f, self.fields[f])
+        failed_message = lambda f: print("failed in field %s: '%s'" % (f, self.fields[f]))
         byr = int(self.fields["byr"])
         if byr < 1920 or byr > 2002:
             failed_message("byr")
