@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq)]
-enum ArtihmeticOperation {
+enum ArithmeticOp {
     PLUS,
     MINUS,
 }
@@ -7,8 +7,8 @@ enum ArtihmeticOperation {
 #[derive(Debug, PartialEq)]
 enum Instruction {
     Nop,
-    AccImmediate(ArtihmeticOperation, usize),
-    JmpRelative(ArtihmeticOperation, usize),
+    AccImmediate(ArithmeticOp, usize),
+    JmpRelative(ArithmeticOp, usize),
 }
 
 impl Instruction {
@@ -23,8 +23,8 @@ impl Instruction {
         let op = split.next().unwrap().as_bytes();
         let op_arg = &op[0];
         let op_arg = match *op_arg as char {
-            '+' => ArtihmeticOperation::PLUS,
-            '-' => ArtihmeticOperation::MINUS,
+            '+' => ArithmeticOp::PLUS,
+            '-' => ArithmeticOp::MINUS,
             _ => panic!("invalid op arg"),
         };
 
@@ -60,7 +60,7 @@ impl HandHeld {
                 None => break,
             };
 
-            println!("running {:?} pc {}", inst, self.pc);
+            //println!("running {:?} pc {}", inst, self.pc);
 
             if self.ran_pcs.contains(&self.pc) {
                 return Err(CpuFault::Loop(self.pc));
@@ -73,20 +73,20 @@ impl HandHeld {
                 }
                 Instruction::AccImmediate(op, imm) => {
                     match op {
-                        ArtihmeticOperation::PLUS => {
+                        ArithmeticOp::PLUS => {
                             self.r0 += imm as u64;
-                        }
-                        ArtihmeticOperation::MINUS => {
+                        },
+                        ArithmeticOp::MINUS => {
                             self.r0 -= imm as u64;
                         }
                     };
                     self.pc += 1;
                 }
                 Instruction::JmpRelative(op, imm) => match op {
-                    ArtihmeticOperation::PLUS => {
+                    ArithmeticOp::PLUS => {
                         self.pc += imm;
                     }
-                    ArtihmeticOperation::MINUS => {
+                    ArithmeticOp::MINUS => {
                         self.pc -= imm;
                     }
                 },
@@ -116,28 +116,28 @@ mod test {
         assert_eq!(Instruction::Nop, Instruction::decode("nop +34"));
 
         assert_eq!(
-            Instruction::AccImmediate(ArtihmeticOperation::PLUS, 3),
+            Instruction::AccImmediate(ArithmeticOp::PLUS, 3),
             Instruction::decode("acc +3")
         );
         assert_eq!(
-            Instruction::AccImmediate(ArtihmeticOperation::MINUS, 5),
+            Instruction::AccImmediate(ArithmeticOp::MINUS, 5),
             Instruction::decode("acc -5")
         );
         assert_eq!(
-            Instruction::AccImmediate(ArtihmeticOperation::MINUS, 55),
+            Instruction::AccImmediate(ArithmeticOp::MINUS, 55),
             Instruction::decode("acc -55")
         );
 
         assert_eq!(
-            Instruction::JmpRelative(ArtihmeticOperation::PLUS, 3),
+            Instruction::JmpRelative(ArithmeticOp::PLUS, 3),
             Instruction::decode("jmp +3")
         );
         assert_eq!(
-            Instruction::JmpRelative(ArtihmeticOperation::MINUS, 5),
+            Instruction::JmpRelative(ArithmeticOp::MINUS, 5),
             Instruction::decode("jmp -5")
         );
         assert_eq!(
-            Instruction::JmpRelative(ArtihmeticOperation::MINUS, 55),
+            Instruction::JmpRelative(ArithmeticOp::MINUS, 55),
             Instruction::decode("jmp -55")
         );
     }
