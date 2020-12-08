@@ -16,8 +16,8 @@ class Computer():
 
     def run_instructions(self, instructions):
         while True:
-            inst = instructions[self.pc]
             if self.pc in self.ran_instructions:
+                """
                 print("trace")
                 count = 0
                 for i in reversed(self.ran_instructions) :
@@ -25,17 +25,19 @@ class Computer():
                     if count > 15:
                         break
                     print(instructions[i])
+                """
                 print("want to run '%s' twice, r0 is %d" % (inst, self.r0))
                 return -2
             if self.pc == len(instructions):
                 print("reached the end %d" % self.r0)
                 return -1
+            inst = instructions[self.pc]
             inst_split = inst.split()
             inst_op = inst_split[0]
             inst_arg_op = inst_split[1][:1]
             inst_arg = inst_split[1][1:]
 
-            print("running (%s %s %s)" % (inst_op, inst_arg_op, inst_arg))
+            #print("running (%s %s %s)" % (inst_op, inst_arg_op, inst_arg))
 
             if inst_op == "nop":
                 self.ran_instructions.append(self.pc)
@@ -53,16 +55,42 @@ class Computer():
             if inst_op == "jmp":
                 self.ran_instructions.append(self.pc)
 
-                old_pc = self.pc
                 if inst_arg_op == "+":
                     self.pc += int(inst_arg)
                 else:
                     self.pc -= int(inst_arg)
 
-                #if self.pc in self.ran_instructions:
-                    #self.pc = old_pc
+def alter_inst_set(instructions, inst_to_alter):
+    jmps = []
+    for ii,inst in enumerate(instructions):
+        if inst_to_alter in inst:
+            jmps.append(ii)
 
+    if inst_to_alter == "jmp":
+        new_inst = "nop"
+    else:
+        new_inst = "jmp"
+    inst_sets =[]
+    for jmp in jmps:
+        print("changing jmp at %d: %s" % (jmp, instructions[jmp]))
+        cp = instructions.copy()
+        cp[jmp] = cp[jmp].replace(inst_to_alter, new_inst)
+        inst_sets.append(cp)
+        print("jmp is now at %d: %s" % (jmp, cp[jmp]))
+    return inst_sets
 
-
-computer = Computer()
-computer.run_instructions(input)
+sets = alter_inst_set(input, "jmp")
+for s in sets:
+    computer = Computer()
+    ret = computer.run_instructions(s)
+    if ret == -1:
+        break
+"""
+sets = alter_inst_set(input, "nop")
+assert sets[0] != sets[1]
+for s in sets:
+    computer = Computer()
+    ret = computer.run_instructions(s)
+    if ret == -1:
+        break
+"""
