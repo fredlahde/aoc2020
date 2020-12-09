@@ -1,71 +1,50 @@
-#[derive(Debug, PartialEq)]
-enum ArithmeticOp {
-    PLUS,
-    MINUS,
-}
+mod instruction;
+pub mod trace;
 
-#[derive(Debug, PartialEq)]
-enum Instruction {
-    Nop,
-    AccImmediate(ArithmeticOp, usize),
-    JmpRelative(ArithmeticOp, usize),
-}
+use std::collections::HashSet;
+use std::rc::Rc;
 
-impl Instruction {
-    // TODO: do not panic
-    fn decode(in_string: &str) -> Self {
-        if in_string.starts_with("nop") {
-            return Instruction::Nop;
-        }
-        let mut split = in_string.split(" ");
-        let inst = split.next().unwrap();
-
-        let op = split.next().unwrap().as_bytes();
-        let op_arg = &op[0];
-        let op_arg = match *op_arg as char {
-            '+' => ArithmeticOp::PLUS,
-            '-' => ArithmeticOp::MINUS,
-            _ => panic!("invalid op arg"),
-        };
-
-        let op_imm = &op[1..];
-        let op_imm = std::str::from_utf8(op_imm).unwrap();
-        let op_imm: usize = op_imm.parse().unwrap();
-
-        match inst {
-            "acc" => Instruction::AccImmediate(op_arg, op_imm),
-            "jmp" => Instruction::JmpRelative(op_arg, op_imm),
-            _ => panic!("SIGILL"),
-        }
-    }
-}
+use crate::instruction::{ArithmeticOp, Instruction};
+use crate::trace::{TraceEntry, Tracer};
 
 #[derive(Debug, PartialEq)]
 pub enum CpuFault {
     Loop(usize),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct HandHeld {
-    r0: u64,
+    r0: i64,
     pc: usize,
-    ran_pcs: Vec<usize>,
+    ran_pcs: HashSet<usize>,
+    tracer: Tracer,
+    tracing_enabled: bool,
 }
 
 impl HandHeld {
+    // TODO: add enum or options struct
+    pub fn new(tracing_enabled: bool) -> Self {
+        Self {
+            r0: 0i64,
+            pc: 0usize,
+            ran_pcs: HashSet::default(),
+            tracer: Tracer::new(),
+            tracing_enabled,
+        }
+    }
+
     pub fn run_code(&mut self, code: &[&str]) -> Result<(), CpuFault> {
+        let mut clock = 0u128;
         loop {
+            clock += 1;
             let inst = match code.get(self.pc) {
                 Some(inst) => Instruction::decode(inst),
                 None => break,
             };
 
-            //println!("running {:?} pc {}", inst, self.pc);
-
-            if self.ran_pcs.contains(&self.pc) {
+            if !self.ran_pcs.insert(self.pc) {
                 return Err(CpuFault::Loop(self.pc));
             }
-            self.ran_pcs.push(self.pc);
 
             match inst {
                 Instruction::Nop => {
@@ -74,10 +53,10 @@ impl HandHeld {
                 Instruction::AccImmediate(op, imm) => {
                     match op {
                         ArithmeticOp::PLUS => {
-                            self.r0 += imm as u64;
-                        },
+                            self.r0 += imm as i64;
+                        }
                         ArithmeticOp::MINUS => {
-                            self.r0 -= imm as u64;
+                            self.r0 -= imm as i64;
                         }
                     };
                     self.pc += 1;
@@ -90,7 +69,11 @@ impl HandHeld {
                         self.pc -= imm;
                     }
                 },
-                _ => todo!(),
+            }
+
+            if self.tracing_enabled {
+                self.tracer
+                    .log(TraceEntry::new(clock, self.r0, self.pc, inst));
             }
         }
         Ok(())
@@ -100,10 +83,14 @@ impl HandHeld {
         println!("r0: {} pc: {}", self.r0, self.pc);
     }
 
+    pub fn serialize_trace(&self) -> String {
+        self.tracer.serialize()
+    }
+
     pub fn reset(&mut self) {
         self.r0 = 0;
         self.pc = 0;
-        self.ran_pcs = Vec::default();
+        self.ran_pcs = HashSet::default();
     }
 }
 
@@ -111,40 +98,8 @@ impl HandHeld {
 mod test {
     use super::*;
     #[test]
-    fn test_instruction_decode() {
-        assert_eq!(Instruction::Nop, Instruction::decode("nop"));
-        assert_eq!(Instruction::Nop, Instruction::decode("nop +34"));
-
-        assert_eq!(
-            Instruction::AccImmediate(ArithmeticOp::PLUS, 3),
-            Instruction::decode("acc +3")
-        );
-        assert_eq!(
-            Instruction::AccImmediate(ArithmeticOp::MINUS, 5),
-            Instruction::decode("acc -5")
-        );
-        assert_eq!(
-            Instruction::AccImmediate(ArithmeticOp::MINUS, 55),
-            Instruction::decode("acc -55")
-        );
-
-        assert_eq!(
-            Instruction::JmpRelative(ArithmeticOp::PLUS, 3),
-            Instruction::decode("jmp +3")
-        );
-        assert_eq!(
-            Instruction::JmpRelative(ArithmeticOp::MINUS, 5),
-            Instruction::decode("jmp -5")
-        );
-        assert_eq!(
-            Instruction::JmpRelative(ArithmeticOp::MINUS, 55),
-            Instruction::decode("jmp -55")
-        );
-    }
-
-    #[test]
     fn test_run_code() {
-        let mut handheld = HandHeld::default();
+        let mut handheld = HandHeld::new(false);
         handheld.run_code(&["jmp +2", "acc +5", "acc +10"]).unwrap();
 
         assert_eq!(10, handheld.r0);
@@ -153,7 +108,7 @@ mod test {
 
     #[test]
     fn test_run_code_loop_detect() {
-        let mut handheld = HandHeld::default();
+        let mut handheld = HandHeld::new(false);
         let ret = handheld.run_code(&["jmp +2", "acc +5", "jmp -2"]);
 
         assert_eq!(CpuFault::Loop(0), ret.unwrap_err());
@@ -162,7 +117,7 @@ mod test {
 
     #[test]
     fn test_reset() {
-        let mut handheld = HandHeld::default();
+        let mut handheld = HandHeld::new(false);
         handheld.run_code(&["jmp +2", "acc +5", "acc +10"]).unwrap();
 
         assert_eq!(10, handheld.r0);
@@ -172,5 +127,19 @@ mod test {
 
         assert_eq!(0, handheld.r0);
         assert_eq!(0, handheld.pc);
+    }
+
+    #[test]
+    fn test_with_tracing() {
+        let mut handheld = HandHeld::new(true);
+        handheld.run_code(&["jmp +2", "acc +5", "acc +10"]).unwrap();
+
+        let expected = r#"1 0 2 JmpRelative(PLUS, 2)
+2 10 3 AccImmediate(PLUS, 10)"#;
+
+        assert_eq!(10, handheld.r0);
+        assert_eq!(3, handheld.pc);
+
+        assert_eq!(expected, handheld.serialize_trace());
     }
 }
