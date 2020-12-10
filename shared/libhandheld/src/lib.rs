@@ -1,8 +1,7 @@
-mod instruction;
+pub mod instruction;
 pub mod trace;
 
 use std::collections::HashSet;
-use std::rc::Rc;
 
 use crate::instruction::{ArithmeticOp, Instruction};
 use crate::trace::{TraceEntry, Tracer};
@@ -52,20 +51,20 @@ impl HandHeld {
                 }
                 Instruction::AccImmediate(op, imm) => {
                     match op {
-                        ArithmeticOp::PLUS => {
+                        ArithmeticOp::Plus => {
                             self.r0 += imm as i64;
                         }
-                        ArithmeticOp::MINUS => {
+                        ArithmeticOp::Minus => {
                             self.r0 -= imm as i64;
                         }
                     };
                     self.pc += 1;
                 }
                 Instruction::JmpRelative(op, imm) => match op {
-                    ArithmeticOp::PLUS => {
+                    ArithmeticOp::Plus => {
                         self.pc += imm;
                     }
-                    ArithmeticOp::MINUS => {
+                    ArithmeticOp::Minus => {
                         self.pc -= imm;
                     }
                 },
@@ -134,8 +133,8 @@ mod test {
         let mut handheld = HandHeld::new(true);
         handheld.run_code(&["jmp +2", "acc +5", "acc +10"]).unwrap();
 
-        let expected = r#"1 0 2 JmpRelative(PLUS, 2)
-2 10 3 AccImmediate(PLUS, 10)"#;
+        let expected = r#"1 0 2 jmp +2
+2 10 3 acc +10"#;
 
         assert_eq!(10, handheld.r0);
         assert_eq!(3, handheld.pc);
