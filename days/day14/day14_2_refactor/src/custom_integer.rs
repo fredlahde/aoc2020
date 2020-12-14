@@ -14,17 +14,17 @@ impl Default for CustomInteger {
 
 impl CustomInteger {
     pub fn apply_mask(&mut self, mask: &str) {
-        for (i, c) in mask.chars().enumerate() {
-            if let (i, '1') = (i, c) {
-                self.bits[i] = 1;
+        for (ii, cc) in mask.chars().enumerate() {
+            if let (ii, '1') = (ii, cc) {
+                self.bits[ii] = 1;
             }
         }
     }
 
     pub fn get_value_string(&self) -> String {
         let mut ret = String::default();
-        for b in &self.bits {
-            ret.push_str(&format!("{}", b));
+        for bit in &self.bits {
+            ret.push_str(&format!("{}", bit));
         }
         ret
     }
@@ -44,8 +44,8 @@ impl From<u128> for CustomInteger {
 impl FromStr for CustomInteger {
     type Err = ParseIntError;
     fn from_str(src: &str) -> std::result::Result<Self, Self::Err> {
-        let n: u128 = src.parse()?;
-        Ok(n.into())
+        let nn: u128 = src.parse()?;
+        Ok(nn.into())
     }
 }
 

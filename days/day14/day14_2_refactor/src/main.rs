@@ -25,40 +25,6 @@ impl Mem {
     }
 }
 
-fn run<P: AsRef<Path>>(path: P) -> u128 {
-    let input = std::fs::read_to_string(path).unwrap();
-    let mut mem = Mem::new();
-    let mut current_mask = "";
-    let re = Regex::new(r"^mem\[(\d*)\]\s=\s(\d*)$").unwrap();
-    for line in input.split('\n') {
-        if line.starts_with("mask") {
-            current_mask = line.split("mask = ").nth(1).unwrap();
-            continue;
-        }
-
-        let groups = &re.captures_iter(&line).collect::<Vec<_>>();
-        if !groups.is_empty() {
-            let groups = &groups[0];
-            let addr = groups[1].to_owned();
-            let addr: u128 = addr.parse().unwrap();
-            let val: u128 = groups[2].parse().unwrap();
-
-            let addrs = generate_all_addrs(addr, current_mask);
-
-            for addr in addrs {
-                let addr = u128::from_str_radix(&addr, 2).unwrap();
-                mem.write(addr, val);
-            }
-        }
-    }
-    mem.value()
-}
-
-fn main() {
-    let res = run("inputs/input");
-    println!("{}", res);
-}
-
 fn generate_all_addrs(addr: u128, mask_in: &str) -> Vec<String> {
     let mut custom: CustomInteger = addr.into();
     custom.apply_mask(mask_in);
@@ -71,11 +37,11 @@ fn generate_all_addrs(addr: u128, mask_in: &str) -> Vec<String> {
 
     for pp in permutations {
         let mut permutation_chars = pp.chars();
-        let mut addr_chars = addr_string.clone().chars().collect::<Vec<_>>();
+        let mut addr_chars = addr_string.chars().collect::<Vec<_>>();
         for (i, cc) in mask_in.chars().enumerate() {
             if cc == 'X' {
-                let p = permutation_chars.next().unwrap();
-                addr_chars[i] = p;
+                let pc = permutation_chars.next().unwrap();
+                addr_chars[i] = pc;
             }
         }
         ret.push(addr_chars.iter().collect::<String>());
@@ -84,14 +50,45 @@ fn generate_all_addrs(addr: u128, mask_in: &str) -> Vec<String> {
     ret
 }
 
-fn generate_bit_permutations(n: usize) -> Vec<String> {
+fn generate_bit_permutations(width: usize) -> Vec<String> {
     let mut ret = Vec::new();
-    let base: usize = 2;
-    let p = base.pow(n as u32);
-    for i in 0..p {
-        ret.push(format!("{number:>0width$b}", number = i, width = n));
+    let pp = 2_usize.pow(width as u32);
+    for ii in 0..pp {
+        ret.push(format!("{number:>0width$b}", number = ii, width = width));
     }
     ret
+}
+
+fn run<P: AsRef<Path>>(path: P) -> u128 {
+    let input = std::fs::read_to_string(path).unwrap();
+    let mut mem = Mem::new();
+    let mut current_mask = "";
+    let re = Regex::new(r"^mem\[(\d*)\]\s=\s(\d*)$").unwrap();
+    for line in input.split('\n') {
+        if line.starts_with("mask") {
+            current_mask = line.split("mask = ").nth(1).unwrap();
+            continue;
+        }
+
+        let groups = &re.captures(&line);
+        if let Some(groups) = groups {
+            let addr = groups[1].to_owned();
+            let addr: u128 = addr.parse().unwrap();
+            let val: u128 = groups[2].parse().unwrap();
+
+            let addrs = generate_all_addrs(addr, current_mask);
+            for addr in addrs {
+                let addr = u128::from_str_radix(&addr, 2).unwrap();
+                mem.write(addr, val);
+            }
+        }
+    }
+    mem.value()
+}
+
+fn main() {
+    let res = run("inputs/input");
+    println!("{}", res);
 }
 
 #[cfg(test)]
