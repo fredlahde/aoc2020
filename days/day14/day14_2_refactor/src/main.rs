@@ -130,8 +130,16 @@ mod test {
         let addr = 42;
         let mask = "000000000000000000000000000000X1001X";
         let result = generate_all_addrs(addr, mask);
-        println!("{:?}", result);
         assert_eq!(true, result.len() % 2 == 0);
         assert_eq!(4, result.len());
+        assert_eq!(
+            &[
+                "000000000000000000000000000000011010",
+                "000000000000000000000000000000011011",
+                "000000000000000000000000000000111010",
+                "000000000000000000000000000000111011"
+            ],
+            result.as_slice()
+        );
     }
 }
