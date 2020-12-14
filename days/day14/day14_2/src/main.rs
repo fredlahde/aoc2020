@@ -4,9 +4,10 @@ mod custom_integer;
 
 use custom_integer::CustomInteger;
 use regex::Regex;
+use std::path::Path;
 
 struct Mem {
-    mem: BTreeMap<u128,u128>,
+    mem: BTreeMap<u128, u128>,
 }
 
 impl Mem {
@@ -26,8 +27,8 @@ impl Mem {
     }
 }
 
-fn main() {
-    let input = std::fs::read_to_string("inputs/input").unwrap();
+fn run<P: AsRef<Path>>(path: P) -> u128 {
+    let input = std::fs::read_to_string(path).unwrap();
     let mut mem = Mem::new();
     let mut current_mask = "";
     let re = Regex::new(r"^mem\[(\d*)\]\s=\s(\d*)$").unwrap();
@@ -52,7 +53,12 @@ fn main() {
             }
         }
     }
-    println!("{}", mem.value());
+    mem.value()
+}
+
+fn main() {
+    let res = run("inputs/input");
+    println!("{}", res);
 }
 
 fn generate_all_addrs(addr: u128, mask_in: &str) -> Vec<String> {
@@ -94,6 +100,11 @@ fn generate_bit_permutations(n: usize) -> Vec<String> {
 mod test {
     use super::*;
 
+    #[test]
+    fn test_puzzle() {
+        let res = run("inputs/input");
+        assert_eq!(3434009980379, res);
+    }
     #[test]
     fn test_bit_permutations() {
         let width = 3;
