@@ -21,8 +21,6 @@ impl Mem {
     }
 
     fn value(self) -> u128 {
-        //let values = self.mem.into_values().collect::<Vec<_>>();
-        //values.iter().sum()
         self.mem.iter().map(|(_k, v)| *v).sum()
     }
 }
